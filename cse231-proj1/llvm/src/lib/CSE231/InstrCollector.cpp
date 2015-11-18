@@ -1,4 +1,4 @@
-#define DEBUG_TYPE "COUNT_DYNAMIC"
+#define DEBUG_TYPE "INSTR_CONTAINER"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Function.h"
@@ -13,70 +13,19 @@
 #include <string.h>
 #include <utility>
 #include <iomanip>
+#include <iostream>
+#include "InstrContainer.h"
 
 using namespace llvm;
-
-class InstrContainer
-{
-    std::string opcode;
-    std::string name;
-    uint32_t no_args;
-    std::vector<std::string> args;
-
-public:
-    std::string getOp();
-    std::string getName();
-    uint32_t getNoArgs();
-
-    void setOp(std::string);
-    void setName(std::string);
-    void setNoArgs(uint32_t);
-    std::ostream& operator<<(std::ostream& os, const InstrContainer& obj)
-    {
-        // write obj to stream
-        os << obj->opcode << "\t" << obj->name << "\t" << obj->no_args;
-        return os;
-    }
-};
-
-std::string InstrContainer::getOp()
-{
-    return opcode;
-}
-
-std::string InstrContainer::getName()
-{
-    return name;
-}
-
-std::string InstrContainer::getNoArgs()
-{
-    return no_args;
-}
-
-void InstrContainer::setOp(std::string s)
-{
-    opcode = s;
-}
-
-void InstrContainer::setName(std::string s)
-{
-    name = s;
-}
-
-void InstrContainer::setNoArgs(std::string s)
-{
-    no_args = s;
-}
 
 
 namespace {
 
   static IRBuilder<> builder(getGlobalContext());
 
-  struct CountDynamicInstructions : public ModulePass {
+  struct InstrCollector : public ModulePass {
     static char ID; // Pass identification, replacement for typeid
-    CountDynamicInstructions() : ModulePass(ID) {}
+    InstrCollector() : ModulePass(ID) {}
     Function *hook;
 
 
@@ -86,7 +35,8 @@ namespace {
     bool runOnModule(Module &M)
     {
         Module::iterator F, F_last;
-        std::std::vector<InstrContainer> instrs;
+        std::vector<InstrContainer> instrs;
+        std::vector<InstrContainer>::iterator iter;
 
         for (F = M.begin(), F_last = M.end(); F != F_last; F++)
         {
@@ -96,33 +46,35 @@ namespace {
                 BasicBlock::iterator I, I_last;
                 for (I = B->begin(), I_last = B->end(); I != I_last; I++ )
                 {
-                    InstrContainer cur;
-                    cur.setName( i->getOpcodeName() );
-                    cur.setOp( i->getOpcode() );
-                    cur.setNoArgs( i->getNumOperands() );
+                    InstrContainer cur ;
+                    cur.setName( I->getOpcodeName() );
+                    cur.setOp( I->getOpcode() );
+                    cur.setNoArgs( I->getNumOperands() );
+                    instrs.push_back(cur);
                 }
             }
         }
 
-        std::iterator<InstrContainer> iter;
-        for (iter = instrs.begin(), iter != instrs.end(); iter++)
+        for (iter = instrs.begin(); iter != instrs.end(); iter++)
         {
-            cout<<iter;
+            // errs()<<"\n" << iter->getOp() << "\t";
+            // errs()<<iter->getName() << "\t";
+            // errs()<<iter->getNoArgs() << "\t";
+            errs() << *iter << "\n";
         }
+        return false;
     }
-
-
   };
 
-void CountDynamicInstructions::print(raw_ostream &O,const Module*) const{
-        O << "InstrContainer Pass done!! \n";
+void InstrCollector::print(raw_ostream &O,const Module*) const{
+        O << "InstrCollector Pass done!! \n";
 }
 
 }
 
 
-char InstrContainer::ID = 0;
-static RegisterPass<InstrContainer> X("InstrContainer", "Populate Instruction Data Structure");
+char InstrCollector::ID = 0;
+static RegisterPass<InstrCollector> X("InstrCollector", "Populate Instruction Data Structure");
 
  //    virtual bool runOnModule(Module &M) {
 
